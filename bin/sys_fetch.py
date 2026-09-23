@@ -66,7 +66,7 @@ NOT_SIGNED_IN = (
     'First connect the MCP address and sign in:\n'
     '  claude mcp add --transport http --scope user the-system <address>\n'
     '  then in Claude Code: /mcp -> the-system -> Authenticate\n'
-    'The address is on the "Connect system as MCP" page of your dashboard.\n'
+    'The address is on the "Set up platform as MCP" page of your dashboard.\n'
     'Then run the install again: claude plugin install sys@the-system'
 )
 REFUSED = (
