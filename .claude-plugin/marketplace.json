@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "the-system",
+  "description": "S.Y.S.T.E.M for Claude Code. The plugin itself comes from your the-system server after you sign in.",
+  "owner": {
+    "name": "Infuse Media"
+  },
+  "plugins": [
+    {
+      "name": "sys",
+      "description": "The status line, the /sys menu and the hooks of the-system. Sign in to the-system first: this entry downloads the plugin from the server you signed in to.",
+      "category": "security",
+      "source": {
+        "source": "command",
+        "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/marketplaces/the-system/bin/sys_fetch.py\"",
+        "timeout": 120
+      }
+    }
+  ]
+}
