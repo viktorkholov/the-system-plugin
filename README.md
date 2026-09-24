@@ -23,13 +23,18 @@ the terminal.
 
 ## Install
 
-The easy way: open the **Set up platform as MCP** page of your dashboard and
-press **Copy instruction**. Paste it in Claude Code, in your project folder.
-The agent does steps 1 to 3, tells you when to click, and adds the rules to
-your repository. It opens a pull request with two small files: CLAUDE.md and
-one rule file. Merge it, so your whole team gets them. Steps 4 and 5 are yours.
+Two steps, like Linear's MCP page. Step 1 is required, step 2 is optional.
+Take the address from the **Set up platform as MCP** page of your dashboard.
 
-By hand, it is the same order. Take the address from that page.
+### Step 1 — Connect (required)
+
+The easy way: on that page press **Copy instruction**. Paste it in Claude
+Code, in your project folder. The agent connects the address, tells you when
+to click, and adds the rules to your repository. It opens a pull request with
+two small files: CLAUDE.md and one rule file. Merge it, so your whole team
+gets them.
+
+By hand:
 
 1. **Connect the MCP address.**
 
@@ -39,15 +44,7 @@ By hand, it is the same order. Take the address from that page.
 
    You should see: `Added HTTP MCP server the-system with URL: <address> to user config`
 
-2. **Add this marketplace.** It only adds the list. It installs nothing.
-
-   ```
-   claude plugin marketplace add viktorkholov/the-system-plugin
-   ```
-
-   You should see: `Successfully added marketplace: the-system`
-
-3. **Sign in.** A browser tab opens. Press **Continue with Microsoft**, then
+2. **Sign in.** A browser tab opens. Press **Continue with Microsoft**, then
    **Return to your editor**.
 
    ```
@@ -59,10 +56,20 @@ By hand, it is the same order. Take the address from that page.
    If that does not work, sign in inside Claude Code instead: run `/mcp`, and
    choose **the-system → Authenticate**.
 
-4. **Install the plugin.** Run this one line in your own terminal, not
-   inside a Claude Code session:
+3. **Start Claude Code again.** Now your agent has the tools.
+
+### Step 2 — Add the terminal GUI (optional)
+
+A status line, the `/sys` menu, and a note when a scan is ready. The tools
+work without it. It needs the sign-in from step 1. Run these two lines before
+the restart in step 1, and one restart covers both steps.
+
+1. **Install the plugin.** Run both lines in your own terminal, not inside a
+   Claude Code session. The first one only adds the list and is safe to
+   repeat:
 
    ```
+   claude plugin marketplace add viktorkholov/the-system-plugin
    claude plugin install sys@the-system --yes --config url=<address> --config status_line=true
    ```
 
@@ -74,14 +81,17 @@ By hand, it is the same order. Take the address from that page.
    Claude Code session `--yes` does not work, on purpose, so an agent cannot
    do this step for you.
 
-5. **Start Claude Code again.** Now you have the tools, the status line and
-   `/sys`. `claude mcp list` shows one `the-system`, connected: the plugin
-   uses the same address, so there is one connection and one sign-in.
+2. **Start Claude Code again.** Now you also have the status line and `/sys`.
+   `claude mcp list` shows one `the-system`, connected: the plugin uses the
+   same address, so there is one connection and one sign-in.
 
 **After the restart — try this**, in any repository. The answers are examples:
 
 - `What did this branch add?` → 2 added, 4 no longer present — against main
 - `Show me the blockers on my branch, in the order I should fix them` → S5332 · api/client.py:41 — http, use https
+
+With the terminal GUI:
+
 - `/sys` or `/sys status` → Scan status · What this branch added · Blockers · Update & sign in
 
 The status line is at the bottom of Claude Code, for example s.y.s.t.e.m ● · 2 blocker(s) · report 18:10 (sha: c0ffee1): the gate's verdict for the branch you are on, and the report it comes from.
@@ -145,7 +155,7 @@ The script uses only the Python standard library, so it installs nothing else.
 
 | You see | What to do |
 | --- | --- |
-| `you are not signed in to the-system yet` | Do steps 1 to 3, then run the install again |
+| `you are not signed in to the-system yet` | Do step 1 (connect and sign in), then run the install again |
 | `did not accept your sign-in (401)` | Your sign-in ran out. Run `/mcp` → **the-system → Authenticate** again, then install again |
 | A `403` with a reason | Your account cannot use the plugin. The reason says why. Ask the owner of your the-system |
 | `-y/--yes is ignored inside a Claude Code session` | Run the install in your own terminal, not inside a Claude Code session |

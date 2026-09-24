@@ -11,8 +11,9 @@ it does:
 
 1. Finds the token Claude Code keeps for the-system after
    `/mcp` -> the-system -> Authenticate. That is the Keychain item
-   `Claude Code-credentials` on macOS, or `.credentials.json` in the Claude
-   Code configuration directory. The plugin's own sign-in (`/sys:sign-in`)
+   `Claude Code-credentials` on macOS (with a suffix for a custom
+   `CLAUDE_CONFIG_DIR`), or `.credentials.json` in the Claude Code
+   configuration directory. The plugin's own sign-in (`/sys:sign-in`)
    is the second choice.
 2. Asks the server that token was made for, and no other server, for
    `<its MCP address>/plugin/sys.zip`. The server answers 401 to anyone who
@@ -90,22 +91,32 @@ def _read_json(path: Path) -> dict:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def claude_store() -> dict:
-    """Claude Code's credential store: the file where there is one, else the Keychain.
+def store_service() -> str:
+    """The Keychain item for the active configuration directory.
 
-    The Keychain only for the default configuration directory. With
-    `CLAUDE_CONFIG_DIR` set, Claude Code names the Keychain item in a way
-    this script does not know, and guessing could read another profile's.
+    With `CLAUDE_CONFIG_DIR` set, Claude Code names it `Claude Code-credentials-`
+    plus the first eight hex digits of the SHA-256 of that directory as the
+    variable spells it (measured on 2.1.280, 2026-09-23). Claude Code runs this
+    script with the same variable, so the name is this profile's own. The same
+    rule as `keychain_service` in the plugin's `statusline/credentials.py`.
     """
+    configured = os.environ.get('CLAUDE_CONFIG_DIR')
+    if not configured:
+        return STORE_SERVICE
+    return '{}-{}'.format(STORE_SERVICE, hashlib.sha256(configured.encode()).hexdigest()[:8])
+
+
+def claude_store() -> dict:
+    """Claude Code's credential store: the file where there is one, else the Keychain."""
     path = config_dir() / STORE_FILE
     found = _read_json(path) if path.exists() else {}
     # A file with no MCP sign-ins in it (left by an older Claude Code, or by a
     # Keychain that was locked once) does not hide the Keychain's.
-    if found.get('mcpOAuth') or os.environ.get('CLAUDE_CONFIG_DIR') or sys.platform != 'darwin':
+    if found.get('mcpOAuth') or sys.platform != 'darwin':
         return found
     try:
         answer = subprocess.run(
-            ['security', 'find-generic-password', '-s', STORE_SERVICE, '-w'],
+            ['security', 'find-generic-password', '-s', store_service(), '-w'],
             capture_output=True, text=True, timeout=KEYCHAIN_TIMEOUT_SECONDS, check=False,
         )
         parsed = json.loads(answer.stdout.strip()) if answer.returncode == 0 else {}
