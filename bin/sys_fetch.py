@@ -19,7 +19,8 @@ it does:
    `<its MCP address>/plugin/sys.zip`. The server answers 401 to anyone who
    is not signed in.
 3. Unpacks the zip into `<config dir>/the-system/plugin-<hash>` and prints
-   that path.
+   that path. On Windows it also points each hook at the Python running this
+   script, because Windows cannot run the plugin's `#!/bin/sh` launcher.
 
 It never refreshes a token: the refresh token belongs to Claude Code, and the
 server replaces it each time it is used. If the token has run out, open
@@ -61,6 +62,12 @@ TIMEOUT_SECONDS = 60
 KEYCHAIN_TIMEOUT_SECONDS = 3
 #: The plugin is a few hundred kilobytes. Anything this large is not it.
 MAX_BYTES = 20 * 1024 * 1024
+#: Claude Code runs commands through cmd.exe and hooks without a shell there (DO-8515).
+WINDOWS = os.name == 'nt'
+#: The oldest Python the hooks run on; the same floor as `hooks/launch`.
+HOOK_PYTHON = (3, 10)
+#: The launcher every hook names in `hooks/hooks.json`.
+LAUNCHER = '${CLAUDE_PLUGIN_ROOT}/hooks/launch'
 
 NOT_SIGNED_IN = (
     'Could not get the sys plugin: you are not signed in to the-system yet.\n'
@@ -76,6 +83,11 @@ REFUSED = (
     'then run: claude plugin install sys@the-system'
 )
 FAILED = 'Could not get the sys plugin from {server}: {reason}'
+NO_HOOKS = (
+    'The sys plugin is installed without its hooks: they need Python 3.10 or newer, '
+    'and {python} is {version}.\n'
+    'Install a newer Python as python3 on PATH, then run: claude plugin install sys@the-system'
+)
 
 
 def config_dir() -> Path:
@@ -248,6 +260,36 @@ def _prune(parent: Path, keep: Path, now: float) -> None:
             pass
 
 
+def windows_hooks(path: Path, python: str, version: tuple) -> None:
+    """Rewrite `hooks.json` so each hook runs `python` directly, with no launcher.
+
+    On Windows Claude Code starts a hook with `args` as a program, not through
+    a shell, and the program must be a real `.exe`. `python` is the one running
+    this script. Below `HOOK_PYTHON` the hooks are dropped, not left to fail on
+    every session.
+    """
+    if not path.is_file():
+        return
+    config = json.loads(path.read_text())
+    if tuple(version[:2]) < HOOK_PYTHON:
+        config['hooks'] = {}
+    for groups in config.get('hooks', {}).values():
+        for hook in (hook for group in groups for hook in group.get('hooks', [])):
+            if hook.get('command') == LAUNCHER:
+                hook['command'] = python
+    path.write_text(json.dumps(config, indent=2) + '\n')
+
+
+def _extract(archive: zipfile.ZipFile, folder: Path) -> None:
+    for info in archive.infolist():
+        archive.extract(info, folder)
+        mode = (info.external_attr >> 16) & 0o777
+        if mode and not info.is_dir():
+            os.chmod(folder / info.filename, mode)
+    if WINDOWS:
+        windows_hooks(folder / 'hooks' / 'hooks.json', sys.executable, sys.version_info)
+
+
 def unpack(body: bytes, parent: Path) -> Path:
     """The zip into `parent/plugin-<hash of the zip>`, whole or not at all.
 
@@ -263,7 +305,11 @@ def unpack(body: bytes, parent: Path) -> Path:
         archive = zipfile.ZipFile(io.BytesIO(body))
     except zipfile.BadZipFile as failure:
         raise ValueError('the answer is not a zip file') from failure
-    target = parent / f'plugin-{hashlib.sha256(body).hexdigest()[:16]}'
+    digest = hashlib.sha256(body)
+    if WINDOWS:
+        # The hooks name this interpreter: two Pythons on one machine get two folders.
+        digest.update(sys.executable.encode())
+    target = parent / f'plugin-{digest.hexdigest()[:16]}'
     with archive:
         for name in archive.namelist():
             path = Path(name)
@@ -279,11 +325,7 @@ def unpack(body: bytes, parent: Path) -> Path:
         if not _valid(target):
             fresh = Path(tempfile.mkdtemp(prefix='.new-', dir=str(parent)))
             try:
-                for info in archive.infolist():
-                    archive.extract(info, fresh)
-                    mode = (info.external_attr >> 16) & 0o777
-                    if mode and not info.is_dir():
-                        os.chmod(fresh / info.filename, mode)
+                _extract(archive, fresh)
                 try:
                     os.rename(fresh, target)
                 except OSError:
@@ -299,6 +341,9 @@ def unpack(body: bytes, parent: Path) -> Path:
 
 
 def main() -> int:
+    if WINDOWS:
+        # A pipe is in the ANSI code page and `-I` ignores PYTHONUTF8: a non-ASCII profile would not print (DO-8515).
+        sys.stdout.reconfigure(encoding='utf-8')
     found = candidates()
     if not found:
         print(NOT_SIGNED_IN, file=sys.stderr)
@@ -328,6 +373,8 @@ def main() -> int:
         except (ValueError, OSError) as failure:
             last = FAILED.format(server=server, reason=failure)
             continue
+        if WINDOWS and sys.version_info[:2] < HOOK_PYTHON:
+            print(NO_HOOKS.format(python=sys.executable, version=sys.version.split()[0]), file=sys.stderr)
         print(path)
         return 0
     print(last, file=sys.stderr)

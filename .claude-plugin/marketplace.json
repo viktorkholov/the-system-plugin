@@ -12,7 +12,7 @@
       "category": "security",
       "source": {
         "source": "command",
-        "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/marketplaces/the-system/bin/sys_fetch.py\"",
+        "command": "python3 -I -c \"import os,runpy;runpy.run_path(os.path.join(os.environ.get('CLAUDE_CONFIG_DIR') or os.path.expanduser('~/.claude'),'plugins','marketplaces','the-system','bin','sys_fetch.py'),run_name='__main__')\" || py -3 -I -c \"import os,runpy;runpy.run_path(os.path.join(os.environ.get('CLAUDE_CONFIG_DIR') or os.path.expanduser('~/.claude'),'plugins','marketplaces','the-system','bin','sys_fetch.py'),run_name='__main__')\"",
         "timeout": 120
       }
     }

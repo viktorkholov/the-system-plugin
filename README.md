@@ -92,7 +92,7 @@ the restart in step 1, and one restart covers both steps.
 
 With the terminal GUI:
 
-- `/sys` or `/sys status` → Scan status · What this branch added · Blockers · Update & sign in
+- `/sys` → Scan status · What this branch added · Blockers · Update & sign in
 
 The status line is at the bottom of Claude Code, for example s.y.s.t.e.m ● · 2 blocker(s) · report 18:10 (sha: c0ffee1): the gate's verdict for the branch you are on, and the report it comes from.
 
@@ -148,8 +148,18 @@ The script uses only the Python standard library, so it installs nothing else.
 ## Needs
 
 - Claude Code 2.1.229 or later
-- `python3`, version 3.8 or later
-- macOS or Linux
+- `python3` on `PATH` (on Windows, `python3` or `py`), version 3.8 or
+  later. The status line, the `/sys` menu and the hooks need 3.10 or later.
+- macOS, Linux or Windows
+
+On Windows, any of these works: the Python install manager, Python from the
+Microsoft Store, or the classic installer from python.org. The classic one
+gives no `python3`, so the install runs through `py`, the launcher it does
+give. If both are missing, the install prints the Microsoft Store's
+"Python was not found". On Windows the hooks run the same Python the install
+ran. If that
+Python is older than 3.10, the plugin installs without its hooks and the
+install says why.
 
 ## If something goes wrong
 
